@@ -1,3 +1,5 @@
-2026/01/04-13:33:52.420 15879b Reusing MANIFEST /home/eventgraphia/Documents/gemini_selenium/chrome-profile/Default/Local Storage/leveldb/MANIFEST-000001
-2026/01/04-13:33:52.446 15879b Recovering log #26
-2026/01/04-13:33:52.448 15879b Reusing old log /home/eventgraphia/Documents/gemini_selenium/chrome-profile/Default/Local Storage/leveldb/000026.log 
+2026/05/28-15:11:33.989 3b78 Reusing MANIFEST C:\Users\EventGraphia\Desktop\Bypass-Chatgpt\chrome-profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/05/28-15:11:34.073 3b78 Recovering log #29583
+2026/05/28-15:11:34.074 3b78 Level-0 table #29586: started
+2026/05/28-15:11:34.095 3b78 Level-0 table #29586: 13884 bytes OK
+2026/05/28-15:11:34.108 3b78 Delete type=0 #29583

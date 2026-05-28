@@ -1,3 +1,15 @@
-2026/01/04-13:21:49.287 1573bd Reusing MANIFEST /home/eventgraphia/Documents/gemini_selenium/chrome-profile/Default/shared_proto_db/MANIFEST-000001
-2026/01/04-13:21:49.288 1573bd Recovering log #3
-2026/01/04-13:21:49.289 1573bd Reusing old log /home/eventgraphia/Documents/gemini_selenium/chrome-profile/Default/shared_proto_db/000003.log 
+2026/05/28-15:09:54.641 977c Reusing MANIFEST C:\Users\EventGraphia\Desktop\Bypass-Chatgpt\chrome-profile\Default\shared_proto_db/MANIFEST-000001
+2026/05/28-15:09:54.642 977c Recovering log #1030
+2026/05/28-15:09:54.651 977c Reusing old log C:\Users\EventGraphia\Desktop\Bypass-Chatgpt\chrome-profile\Default\shared_proto_db/001030.log 
+2026/05/28-15:09:54.694 d438 Level-0 table #1034: started
+2026/05/28-15:09:54.705 d438 Level-0 table #1034: 108545 bytes OK
+2026/05/28-15:09:54.707 d438 Delete type=0 #1030
+2026/05/28-15:09:54.708 d438 Compacting 4@0 + 1@1 files
+2026/05/28-15:09:54.717 d438 Generated table #1035@0: 900 keys, 23304 bytes
+2026/05/28-15:09:54.718 d438 Compacted 4@0 + 1@1 files => 23304 bytes
+2026/05/28-15:09:54.720 d438 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/28-15:09:54.721 d438 Delete type=2 #1022
+2026/05/28-15:09:54.721 d438 Delete type=2 #1025
+2026/05/28-15:09:54.721 d438 Delete type=2 #1028
+2026/05/28-15:09:54.721 d438 Delete type=2 #1031
+2026/05/28-15:09:54.721 d438 Delete type=2 #1034

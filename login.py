@@ -1,6 +1,9 @@
 # to login to the Ai Chatbot
 import os
+import re
 import time
+import winreg
+import subprocess
 import traceback
 from typing import Optional, Tuple
 import undetected_chromedriver as uc
@@ -11,6 +14,44 @@ from selenium.common.exceptions import (
     TimeoutException,
     WebDriverException
 )
+
+
+def get_chrome_version() -> int:
+    """Detect the installed Chrome major version from the Windows registry."""
+    reg_paths = [
+        (winreg.HKEY_CURRENT_USER,
+         r"Software\Google\Chrome\BLBeacon"),
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SOFTWARE\Google\Chrome\BLBeacon"),
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SOFTWARE\Wow6432Node\Google\Chrome\BLBeacon"),
+    ]
+    for hive, path in reg_paths:
+        try:
+            key = winreg.OpenKey(hive, path)
+            version, _ = winreg.QueryValueEx(key, "version")
+            winreg.CloseKey(key)
+            return int(version.split(".")[0])
+        except Exception:
+            continue
+
+    chrome_paths = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ]
+    for path in chrome_paths:
+        if os.path.exists(path):
+            try:
+                out = subprocess.check_output(
+                    [path, "--version"], stderr=subprocess.DEVNULL,
+                    timeout=5).decode()
+                m = re.search(r"(\d+)\.", out)
+                if m:
+                    return int(m.group(1))
+            except Exception:
+                continue
+
+    raise RuntimeError("Could not detect Chrome version")
 
 
 class ChatGPTLogin:
@@ -48,8 +89,10 @@ class ChatGPTLogin:
         options.add_experimental_option("prefs", prefs)
 
         try:
-            print("Initializing browser (this may take a moment)...")
-            driver = uc.Chrome(options=options, use_subprocess=True)
+            chrome_ver = get_chrome_version()
+            print(f"Initializing browser (Chrome {chrome_ver})...")
+            driver = uc.Chrome(options=options, use_subprocess=True,
+                               version_main=chrome_ver)
             driver.set_page_load_timeout(self.timeout)
             return driver
         except Exception as e:

@@ -1,14 +1,14 @@
-2026/01/04-13:21:49.054 1573ec Reusing MANIFEST /home/eventgraphia/Documents/gemini_selenium/chrome-profile/Default/Local Storage/leveldb/MANIFEST-000001
-2026/01/04-13:21:49.067 1573ec Recovering log #23
-2026/01/04-13:21:49.068 1573ec Level-0 table #25: started
-2026/01/04-13:21:49.075 1573ec Level-0 table #25: 20596 bytes OK
-2026/01/04-13:21:49.084 1573ec Delete type=0 #23
-2026/01/04-13:21:49.085 1573ee Compacting 4@0 + 1@1 files
-2026/01/04-13:21:49.091 1573ee Generated table #27@0: 43 keys, 17597 bytes
-2026/01/04-13:21:49.091 1573ee Compacted 4@0 + 1@1 files => 17597 bytes
-2026/01/04-13:21:49.098 1573ee compacted to: files[ 0 1 0 0 0 0 0 ]
-2026/01/04-13:21:49.099 1573ee Delete type=2 #16
-2026/01/04-13:21:49.099 1573ee Delete type=2 #22
-2026/01/04-13:21:49.099 1573ee Delete type=2 #25
-2026/01/04-13:21:49.099 1573ee Delete type=2 #14
-2026/01/04-13:21:49.099 1573ee Delete type=2 #19
+2026/05/28-15:09:54.576 66f4 Reusing MANIFEST C:\Users\EventGraphia\Desktop\Bypass-Chatgpt\chrome-profile\Default\Local Storage\leveldb/MANIFEST-000001
+2026/05/28-15:09:54.611 66f4 Recovering log #29580
+2026/05/28-15:09:54.614 66f4 Level-0 table #29582: started
+2026/05/28-15:09:54.650 66f4 Level-0 table #29582: 11230 bytes OK
+2026/05/28-15:09:54.660 66f4 Delete type=0 #29580
+2026/05/28-15:09:54.661 88fc Compacting 4@0 + 1@1 files
+2026/05/28-15:09:54.716 88fc Generated table #29584@0: 76 keys, 518277 bytes
+2026/05/28-15:09:54.716 88fc Compacted 4@0 + 1@1 files => 518277 bytes
+2026/05/28-15:09:54.719 88fc compacted to: files[ 0 1 0 0 0 0 0 ]
+2026/05/28-15:09:54.720 88fc Delete type=2 #29571
+2026/05/28-15:09:54.720 88fc Delete type=2 #29573
+2026/05/28-15:09:54.721 88fc Delete type=2 #29576
+2026/05/28-15:09:54.721 88fc Delete type=2 #29579
+2026/05/28-15:09:54.721 88fc Delete type=2 #29582

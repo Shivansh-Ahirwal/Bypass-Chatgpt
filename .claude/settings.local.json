@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show *)",
+      "Bash(pip3 show *)",
+      "Bash(python3 -c \"import flask; print\\(flask.__version__\\)\")",
+      "Bash(python3 -c \"import flask_cors; print\\(flask_cors.__version__\\)\")",
+      "Bash(python3 -c \"import undetected_chromedriver; print\\(undetected_chromedriver.__version__\\)\")",
+      "Bash(pip3 list *)",
+      "Bash(google-chrome --version)",
+      "Bash(google-chrome-stable --version)",
+      "Bash(chromium-browser --version)",
+      "Bash(chromium --version)",
+      "Bash(find ~/.local/share/undetected_chromedriver ~/.cache -name \"chromedriver*\" 2>/dev/null)",
+      "Read(//home/eventgraphia/.local/share/undetected_chromedriver/**)",
+      "Bash(find ~/.local/share/undetected_chromedriver /tmp -name \"chromedriver*\" 2>/dev/null)",
+      "Read(//tmp/**)",
+      "Bash(taskkill /F /IM chrome.exe /T)",
+      "Bash(taskkill /F /IM chromedriver.exe /T)",
+      "PowerShell(Remove-Item -Recurse -Force \"$env:APPDATA\\\\undetected_chromedriver\" -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force \"$env:TEMP\\\\undetected_chromedriver\" -ErrorAction SilentlyContinue; Write-Output \"Cache cleared\")",
+      "PowerShell(Remove-Item -Recurse -Force \"$env:APPDATA\\\\undetected_chromedriver\" -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force \"$env:TEMP\\\\undetected_chromedriver\" -ErrorAction SilentlyContinue; taskkill /F /IM chrome.exe /T 2>$null; taskkill /F /IM chromedriver.exe /T 2>$null; Write-Output \"Done\")"
+    ]
+  }
+}

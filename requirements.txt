@@ -1,0 +1,5 @@
+flask==3.1.1
+flask-cors==5.0.1
+selenium==4.43.0
+setuptools>=75.0.0
+undetected-chromedriver==3.5.5

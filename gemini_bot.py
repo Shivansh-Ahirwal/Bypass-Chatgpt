@@ -3,9 +3,12 @@
 ChatGPT Bot - Send prompts and fetch responses using logged-in session.
 """
 import os
+import re
 import sys
 import time
 import json
+import winreg
+import subprocess
 import traceback
 from typing import Optional
 import undetected_chromedriver as uc
@@ -13,11 +16,52 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import (
     TimeoutException,
     NoSuchElementException,
     WebDriverException
 )
+
+
+def get_chrome_version() -> int:
+    """Detect the installed Chrome major version from the Windows registry."""
+    # Registry path written by Chrome on every update
+    reg_paths = [
+        (winreg.HKEY_CURRENT_USER,
+         r"Software\Google\Chrome\BLBeacon"),
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SOFTWARE\Google\Chrome\BLBeacon"),
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SOFTWARE\Wow6432Node\Google\Chrome\BLBeacon"),
+    ]
+    for hive, path in reg_paths:
+        try:
+            key = winreg.OpenKey(hive, path)
+            version, _ = winreg.QueryValueEx(key, "version")
+            winreg.CloseKey(key)
+            return int(version.split(".")[0])
+        except Exception:
+            continue
+
+    # Fallback: ask the chrome.exe binary directly
+    chrome_paths = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    ]
+    for path in chrome_paths:
+        if os.path.exists(path):
+            try:
+                out = subprocess.check_output(
+                    [path, "--version"], stderr=subprocess.DEVNULL,
+                    timeout=5).decode()
+                m = re.search(r"(\d+)\.", out)
+                if m:
+                    return int(m.group(1))
+            except Exception:
+                continue
+
+    raise RuntimeError("Could not detect Chrome version")
 
 
 class ChatGPTBot:
@@ -72,9 +116,11 @@ class ChatGPTBot:
         options.add_experimental_option("prefs", prefs)
 
         try:
+            chrome_ver = get_chrome_version()
             if not self.headless:
-                print("Initializing browser...")
-            driver = uc.Chrome(options=options, use_subprocess=True)
+                print(f"Initializing browser (Chrome {chrome_ver})...")
+            driver = uc.Chrome(options=options, use_subprocess=True,
+                               version_main=chrome_ver)
             driver.set_page_load_timeout(self.timeout)
             return driver
         except Exception as e:
@@ -123,12 +169,43 @@ class ChatGPTBot:
         except TimeoutException:
             return False
 
+    def _check_rate_limit_dialog(self) -> bool:
+        """Return True if the 'Too many requests' dialog is visible."""
+        try:
+            dialog = self.driver.find_element(
+                By.CSS_SELECTOR, "div[role='dialog']")
+            heading = dialog.find_element(By.TAG_NAME, "h2")
+            return "too many requests" in heading.text.lower()
+        except NoSuchElementException:
+            return False
+
+    def _dismiss_rate_limit_dialog(self) -> None:
+        """Click the 'Got it' button to dismiss the rate limit dialog."""
+        try:
+            btn = self.driver.find_element(
+                By.CSS_SELECTOR, "div[role='dialog'] button.btn-primary")
+            self.driver.execute_script("arguments[0].click();", btn)
+            print("✓ Dismissed rate limit dialog")
+            time.sleep(1)
+        except NoSuchElementException:
+            pass
+
     def _wait_for_chat_ready(self) -> bool:
         """Wait for ChatGPT chat interface to be ready."""
         try:
             print("Waiting 5 seconds for page to load...")
             time.sleep(5)
             print("✓ Wait complete, proceeding to enter prompt")
+
+            if self._check_rate_limit_dialog():
+                print("⚠ Rate limit dialog detected — waiting 20 minutes before retrying...")
+                time.sleep(20 * 60)
+                self._navigate_to_chat()
+                time.sleep(5)
+                if self._check_rate_limit_dialog():
+                    print("⚠ Rate limit dialog shown again — dismissing and continuing...")
+                    self._dismiss_rate_limit_dialog()
+
             return True
 
         except Exception as e:
@@ -153,41 +230,34 @@ class ChatGPTBot:
                 raise NoSuchElementException(
                     "Could not find textarea with ID 'prompt-textarea'")
 
-    def _find_send_button(self):
-        """Find the send button."""
-        # Try multiple selectors for the send button
+    def _find_send_button(self, timeout: int = 8):
+        """Wait for the send button to become enabled and return it."""
         selectors = [
             "button[data-testid='send-button']",
+            "button[aria-label='Send prompt']",
             "button[aria-label*='Send']",
-            "button[aria-label*='send']",
             "button[title*='Send']",
-            "button[title*='send']",
-            "button svg[data-icon='paper-plane']",
-            "button:has(svg[data-icon='paper-plane'])",
-            # Fallback: button near the textarea
-            "textarea[data-id='root'] ~ button",
-            "textarea#prompt-textarea ~ button",
         ]
-
         for selector in selectors:
             try:
-                # Try to find button near the textarea
-                if "~" in selector:
-                    # Get textarea first
-                    textarea = self._find_input_element()
-                    # Find button in the same container
-                    parent = textarea.find_element(By.XPATH, "./..")
-                    buttons = parent.find_elements(By.TAG_NAME, "button")
-                    for btn in buttons:
-                        if btn.is_displayed() and btn.is_enabled():
-                            return btn
-                else:
-                    button = self.driver.find_element(
-                        By.CSS_SELECTOR, selector)
-                    if button.is_displayed() and button.is_enabled():
-                        return button
-            except (NoSuchElementException, Exception):
+                btn = WebDriverWait(self.driver, timeout).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+                )
+                return btn
+            except (TimeoutException, NoSuchElementException):
                 continue
+
+        # Last resort: any enabled button inside the composer form
+        try:
+            textarea = self.driver.find_element(By.ID, "prompt-textarea")
+            form = textarea.find_element(
+                By.XPATH, "ancestor::form[1] | ancestor::div[@role='textbox'][1]/..")
+            buttons = form.find_elements(By.TAG_NAME, "button")
+            for btn in buttons:
+                if btn.is_displayed() and btn.is_enabled():
+                    return btn
+        except Exception:
+            pass
 
         raise NoSuchElementException("Could not find send button")
 
@@ -196,169 +266,44 @@ class ChatGPTBot:
         try:
             print(f"Entering prompt: {prompt[:50]}...")
 
-            # Find input element
             input_element = self._find_input_element()
             print("✓ Found input element")
 
-            # Scroll to input element and ensure it's in view
             self.driver.execute_script(
                 "arguments[0].scrollIntoView({block: 'center'});",
                 input_element)
+            time.sleep(0.3)
+
+            # Use ActionChains to click — this properly activates the element
+            # so React recognises subsequent key events (unlike JS focus alone)
+            actions = ActionChains(self.driver)
+            actions.click(input_element).perform()
+            time.sleep(0.3)
+
+            # Clear existing content
+            actions = ActionChains(self.driver)
+            actions.key_down(Keys.CONTROL).send_keys("a").key_up(
+                Keys.CONTROL).send_keys(Keys.DELETE).perform()
+            time.sleep(0.2)
+
+            # Type text — ActionChains sends to the active element
+            actions = ActionChains(self.driver)
+            actions.send_keys(prompt).perform()
+            print("✓ Entered text via ActionChains")
             time.sleep(0.5)
 
-            # For headless mode, use JavaScript for everything
-            if self.headless:
-                # Focus using JavaScript
-                self.driver.execute_script(
-                    "arguments[0].focus();", input_element)
-                self.driver.execute_script(
-                    "arguments[0].click();", input_element)
-                time.sleep(0.5)
-                print("✓ Focused input (headless mode)")
-
-                # In headless, always use JavaScript to set value
-                text_entered = False
-                try:
-                    is_textarea = input_element.tag_name.lower() == 'textarea'
-                    if is_textarea:
-                        # Set value and trigger all necessary events
-                        self.driver.execute_script(
-                            "arguments[0].value = arguments[1];",
-                            input_element, prompt)
-                        # Trigger multiple events for better compatibility
-                        self.driver.execute_script(
-                            "arguments[0].dispatchEvent(new Event('input', "
-                            "{ bubbles: true, cancelable: true }));",
-                            input_element)
-                        self.driver.execute_script(
-                            "arguments[0].dispatchEvent(new Event('change', "
-                            "{ bubbles: true, cancelable: true }));",
-                            input_element)
-                        self.driver.execute_script(
-                            "arguments[0].dispatchEvent(new KeyboardEvent("
-                            "'keyup', { bubbles: true, cancelable: true, "
-                            "key: 'Enter' }));",
-                            input_element)
-                        text_entered = True
-                        print("✓ Set text via JavaScript (headless mode)")
-                except Exception as e:
-                    print(f"⚠ JavaScript method failed: {e}")
-            else:
-                # Non-headless: try click first
-                try:
-                    input_element.click()
-                    time.sleep(0.3)
-                    print("✓ Clicked input to focus")
-                except Exception as e:
-                    print(f"⚠ Could not click input: {e}")
-
-                # Try multiple methods to enter text
-                text_entered = False
-
-                # Method 1: Try JavaScript to set value (works for textarea)
-                try:
-                    is_textarea = input_element.tag_name.lower() == 'textarea'
-                    if is_textarea:
-                        self.driver.execute_script(
-                            "arguments[0].value = arguments[1];",
-                            input_element, prompt)
-                        # Trigger input event
-                        self.driver.execute_script(
-                            "arguments[0].dispatchEvent(new Event('input', "
-                            "{ bubbles: true }));",
-                            input_element)
-                        text_entered = True
-                        print("✓ Set text via JavaScript (textarea)")
-                except Exception as e:
-                    print(f"⚠ JavaScript method failed: {e}")
-
-            # Method 2: Try send_keys
-            # (works for both textarea and contenteditable)
-            if not text_entered:
-                try:
-                    # Clear first
-                    input_element.clear()
-                    time.sleep(0.2)
-
-                    # Focus the element
-                    self.driver.execute_script(
-                        "arguments[0].focus();", input_element)
-                    time.sleep(0.2)
-
-                    # Send keys
-                    input_element.send_keys(prompt)
-                    text_entered = True
-                    print("✓ Entered text via send_keys")
-                except Exception as e:
-                    print(f"⚠ send_keys failed: {e}")
-
-            # Method 3: For contenteditable divs, use JavaScript
-            if not text_entered:
-                try:
-                    contenteditable_attr = input_element.get_attribute(
-                        'contenteditable')
-                    is_contenteditable = contenteditable_attr == 'true'
-                    if is_contenteditable:
-                        self.driver.execute_script(
-                            "arguments[0].innerText = arguments[1];",
-                            input_element, prompt)
-                        self.driver.execute_script(
-                            "arguments[0].dispatchEvent(new Event('input', "
-                            "{ bubbles: true }));",
-                            input_element)
-                        text_entered = True
-                        print("✓ Set text via JavaScript (contenteditable)")
-                except Exception as e:
-                    print(f"⚠ Contenteditable method failed: {e}")
-
-            if not text_entered:
-                print("❌ Failed to enter text using any method",
-                      file=sys.stderr)
-                return False
-
-            # Wait a bit for text to be processed
-            time.sleep(0.5)
-
-            # Verify text was entered
+            # Try to click the send button
             try:
-                if input_element.tag_name.lower() == 'textarea':
-                    current_value = input_element.get_attribute('value')
-                else:
-                    current_value = input_element.text or \
-                        input_element.get_attribute('innerText')
-                if prompt[:20] not in (current_value or ''):
-                    msg = "⚠ Warning: Text may not have been entered correctly"
-                    print(msg)
-                else:
-                    print("✓ Verified text entered")
-            except Exception:
-                pass
-
-            # Find and click the send button
-            try:
-                send_button = self._find_send_button()
+                send_button = self._find_send_button(timeout=8)
                 print("✓ Found send button")
-
-                # Scroll to button
                 self.driver.execute_script(
-                    "arguments[0].scrollIntoView({block: 'center'});",
-                    send_button)
-                time.sleep(0.3)
-
-                # Try clicking with JavaScript if regular click fails
-                try:
-                    send_button.click()
-                    print("✓ Clicked send button")
-                except Exception:
-                    # Fallback: JavaScript click
-                    self.driver.execute_script(
-                        "arguments[0].click();", send_button)
-                    print("✓ Clicked send button (JavaScript)")
-
+                    "arguments[0].click();", send_button)
+                print("✓ Clicked send button")
             except NoSuchElementException:
-                # Fallback: use Enter key
+                # Fallback: send Enter via ActionChains to the active element
                 print("⚠ Send button not found, using Enter key")
-                input_element.send_keys(Keys.RETURN)
+                actions = ActionChains(self.driver)
+                actions.send_keys(Keys.RETURN).perform()
 
             print("✓ Prompt sent, waiting for response...")
             return True
